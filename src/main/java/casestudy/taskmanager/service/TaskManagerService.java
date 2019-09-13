@@ -473,11 +473,10 @@ public class TaskManagerService {
       List<Task> taskList = taskRepository.findByTaskId(Long.parseLong(taskId));
       if (!CollectionUtils.isEmpty(taskList)) {
         Task task = taskList.get(0);
-        task.setPriority(-1);
 
         TaskModel taskModel = new TaskModel();
-
         BeanUtils.copyProperties(task, taskModel);
+        taskModel.setPriority(-1);
         result = updateTask(taskModel);
       } else {
         result = "No task found";
