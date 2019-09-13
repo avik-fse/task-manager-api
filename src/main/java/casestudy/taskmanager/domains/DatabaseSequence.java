@@ -10,12 +10,11 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Getter
 @Setter
 public class DatabaseSequence {
-    @Id
-    private String id;
+  @Id private String id;
 
-    @Field("parent_task_sequence")
-    private Long parentTaskSequence;
+  @Field("parent_task_sequence")
+  private Long parentTaskSequence;
 
-    @Field("task_sequence")
-    private Long taskSequence;
+  @Field("task_sequence")
+  private Long taskSequence;
 }

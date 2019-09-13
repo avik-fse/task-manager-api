@@ -11,8 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Data
 @Document(collection = "parent_task")
 public class ParentTask {
-  @Transient
-  public static final String SEQUENCE_NAME = "parent_task_sequence";
+  @Transient public static final String SEQUENCE_NAME = "parent_task_sequence";
 
   @Id private String id;
 

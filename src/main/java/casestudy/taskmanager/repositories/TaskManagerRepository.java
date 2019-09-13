@@ -42,9 +42,8 @@ public interface TaskManagerRepository {
                                     parTask.getParentId().longValue()
                                         == task.getParentId().longValue())
                             .findFirst();
-                    if (parentTask.isPresent()) {
-                      taskModel.setParentTask(parentTask.get().getParentTask());
-                    }
+
+                    parentTask.ifPresent(value -> taskModel.setParentTask(value.getParentTask()));
 
                     return taskModel;
                   })

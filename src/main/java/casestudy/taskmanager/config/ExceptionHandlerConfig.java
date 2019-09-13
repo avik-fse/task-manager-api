@@ -11,21 +11,22 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @ControllerAdvice
 public class ExceptionHandlerConfig extends ResponseEntityExceptionHandler {
-    @ExceptionHandler(TaskValidationException.class)
-    public final ResponseEntity<String> handleTaskValidationException(TaskValidationException ex, WebRequest request) {
+  @ExceptionHandler(TaskValidationException.class)
+  public final ResponseEntity<String> handleTaskValidationException(
+      TaskValidationException ex, WebRequest request) {
 
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
+    return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+  }
 
-    @ExceptionHandler(DBException.class)
-    public final ResponseEntity<String> handleDBException(DBException ex, WebRequest request) {
+  @ExceptionHandler(DBException.class)
+  public final ResponseEntity<String> handleDBException(DBException ex, WebRequest request) {
 
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+  }
 
-    @ExceptionHandler(Exception.class)
-    public final ResponseEntity<String> handleAllOtherException(Exception ex, WebRequest request) {
+  @ExceptionHandler(Exception.class)
+  public final ResponseEntity<String> handleAllOtherException(Exception ex, WebRequest request) {
 
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+  }
 }

@@ -100,7 +100,7 @@ public class TaskManagerService {
   }
 
   public String addTask(final TaskModel taskModel) {
-    String result = StringUtils.EMPTY;
+    String result;
 
     log.debug("Processing TaskManagerService addTask");
 
@@ -192,7 +192,7 @@ public class TaskManagerService {
   }
 
   public String updateTask(final TaskModel taskModel) {
-    String result = StringUtils.EMPTY;
+    String result;
     boolean recordUpdated = false;
 
     log.debug("Processing TaskManagerService updateTask");
@@ -238,6 +238,10 @@ public class TaskManagerService {
             if (!StringUtils.equals(taskModel.getTask(), task.getTask())
                 || taskModel.getParentId() != task.getParentId()
                 || !taskModel.getStartDate().isEqual(task.getStartDate())
+                || (taskModel.getEndDate() != null
+                    && task.getEndDate() != null
+                    && !taskModel.getEndDate().isEqual(task.getEndDate()))
+                || (taskModel.getEndDate() != null && task.getEndDate() == null)
                 || taskModel.getPriority() != task.getPriority()) {
               saveTask(
                   parentTask.getParentId(),
@@ -296,6 +300,12 @@ public class TaskManagerService {
       } else if (!validateIds) {
         isValidRequest = true;
       }
+
+      if (isValidRequest && taskModel.getStartDate() != null && taskModel.getEndDate() != null) {
+        if (taskModel.getStartDate().isAfter(taskModel.getEndDate())) {
+          isValidRequest = false;
+        }
+      }
     }
     return isValidRequest;
   }
@@ -308,10 +318,10 @@ public class TaskManagerService {
       final Integer priority,
       Task taskObj) {
 
-    final boolean isExtingRecord = (taskObj != null);
+    final boolean isExistingRecord = (taskObj != null);
 
     // Prepare the new ParentTask object to be inserted in DB
-    if (isExtingRecord) {
+    if (isExistingRecord) {
       taskObj.setTask(task);
       taskObj.setStartDate(startDate);
       taskObj.setEndDate(endDate);
@@ -328,11 +338,11 @@ public class TaskManagerService {
     }
 
     log.debug(
-        "{} below Task to task collection\n{}", isExtingRecord ? "Updating" : "Adding", taskObj);
+        "{} below Task to task collection\n{}", isExistingRecord ? "Updating" : "Adding", taskObj);
 
     Task taskPostSave = taskRepository.save(taskObj);
     if (taskPostSave != null && StringUtils.isNotBlank(taskPostSave.getId())) {
-      log.debug("Successfully {} Task to DB", isExtingRecord ? "updated" : "added");
+      log.debug("Successfully {} Task to DB", isExistingRecord ? "updated" : "added");
     } else {
       final String errMsg = "Failed to save Task";
       log.error(errMsg);
@@ -380,7 +390,7 @@ public class TaskManagerService {
     return Optional.ofNullable(allTasks).orElseGet(Collections::emptyList).stream()
         .filter(
             task -> {
-              boolean matched = false;
+              boolean matched;
               if (StringUtils.isNotBlank(taskModel.getTask())) {
                 matched =
                     StringUtils.equalsAnyIgnoreCase(taskModel.getTask().trim(), task.getTask());
@@ -393,7 +403,7 @@ public class TaskManagerService {
             })
         .filter(
             task -> {
-              boolean matched = false;
+              boolean matched;
               if (StringUtils.isNotBlank(taskModel.getParentTask())) {
                 matched =
                     StringUtils.equalsAnyIgnoreCase(
@@ -407,7 +417,7 @@ public class TaskManagerService {
             })
         .filter(
             task -> {
-              boolean matched = false;
+              boolean matched;
 
               if (taskModel.getPriorityFrom() == null) {
                 taskModel.setPriorityFrom(0);
@@ -431,7 +441,7 @@ public class TaskManagerService {
             })
         .filter(
             task -> {
-              boolean matched = false;
+              boolean matched;
               if (taskModel.getStartDate() != null) {
                 matched = task.getStartDate().isEqual(taskModel.getStartDate());
               } else {
@@ -443,7 +453,7 @@ public class TaskManagerService {
             })
         .filter(
             task -> {
-              boolean matched = false;
+              boolean matched;
               if (taskModel.getEndDate() != null) {
                 matched = task.getEndDate().isEqual(taskModel.getEndDate());
               } else {
@@ -457,7 +467,7 @@ public class TaskManagerService {
   }
 
   public String endTask(String taskId) {
-    String result = "";
+    String result;
 
     if (NumberUtils.isCreatable(taskId)) {
       List<Task> taskList = taskRepository.findByTaskId(Long.parseLong(taskId));

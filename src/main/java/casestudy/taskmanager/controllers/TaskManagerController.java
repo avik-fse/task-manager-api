@@ -75,19 +75,19 @@ public class TaskManagerController {
   }
 
   @PostMapping("/addTask")
-  public ResponseEntity<?> addTask(@RequestBody final TaskModel taskMode) {
+  public ResponseEntity<KeyValuePair> addTask(@RequestBody final TaskModel taskMode) {
     final String response = taskManagerService.addTask(taskMode);
     KeyValuePair respBody = new KeyValuePair("message", response);
 
-    return new ResponseEntity(respBody, OK);
+    return new ResponseEntity<>(respBody, OK);
   }
 
   @PutMapping("/updateTask")
-  public ResponseEntity<?> updateTask(@RequestBody final TaskModel taskMode) {
+  public ResponseEntity<KeyValuePair> updateTask(@RequestBody final TaskModel taskMode) {
     final String response = taskManagerService.updateTask(taskMode);
     KeyValuePair respBody = new KeyValuePair("message", response);
 
-    return new ResponseEntity(respBody, OK);
+    return new ResponseEntity<>(respBody, OK);
   }
 
   @PostMapping("/search")
@@ -97,10 +97,10 @@ public class TaskManagerController {
   }
 
   @PutMapping("/endTask/{taskId}")
-  public ResponseEntity<?> endTask(@PathVariable("taskId") final String taskId) {
+  public ResponseEntity<KeyValuePair> endTask(@PathVariable("taskId") final String taskId) {
     final String response = taskManagerService.endTask(taskId);
     KeyValuePair respBody = new KeyValuePair("message", response);
 
-    return new ResponseEntity(respBody, OK);
+    return new ResponseEntity<>(respBody, OK);
   }
 }
