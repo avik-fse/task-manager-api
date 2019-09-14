@@ -1,5 +1,8 @@
 # Steps To Setup Business Tier (REST Api)
 
+**Note:** 
+1. Make sure the MongoDb database is up and running on port **27017**. Please refer to the DataTier setup steps @ https://github.com/avik-fse/fse-data-tier/blob/master/README.md.
+
 ## Steps
 1. Get the source code from git repo:  
    `git clone https://github.com/avik-fse/task-manager-api.git`
