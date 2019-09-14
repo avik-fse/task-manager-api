@@ -2,7 +2,7 @@
 
 ## Steps
 1. Get the source code from git repo:  
-   `https://github.com/avik-fse/task-manager-api.git`
+   `git clone https://github.com/avik-fse/task-manager-api.git`
 
 2. From command prompt, go to the root folder of the application in the checked out location (i.e inside task-manager-api):  
    
