@@ -8,10 +8,10 @@
 		<version>2.1.7.RELEASE</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>task-manager</groupId>
-	<artifactId>task-manager</artifactId>
+	<groupId>task-manager-api</groupId>
+	<artifactId>task-manager-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>task-manager</name>
+	<name>task-manager-api</name>
 	<description>Spring Boot project for Task Manager Case Study</description>
 
 	<properties>
