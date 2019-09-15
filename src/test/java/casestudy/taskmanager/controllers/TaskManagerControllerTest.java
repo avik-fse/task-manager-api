@@ -16,6 +16,7 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.MessageSource;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -51,6 +52,7 @@ public class TaskManagerControllerTest {
   @Mock private TaskManagerRepository taskManagerRepository;
   @Mock private SequenceGeneratorUtil sequenceGeneratorUtil;
   @Mock private MongoTemplate mongoTemplate;
+  @Mock private MessageSource messageSource;
 
   @Autowired private DateUtil dateUtil;
 
@@ -64,7 +66,7 @@ public class TaskManagerControllerTest {
             parentTaskRepository,
             taskManagerRepository,
             sequenceGeneratorUtil,
-            mongoTemplate);
+            mongoTemplate, messageSource);
     taskManagerControllerToTest = new TaskManagerController(taskManagerService, dateUtil);
 
     mockMvc = MockMvcBuilders.standaloneSetup(taskManagerControllerToTest).build();

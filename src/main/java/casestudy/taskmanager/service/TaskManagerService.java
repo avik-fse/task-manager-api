@@ -4,15 +4,19 @@ import casestudy.taskmanager.domains.ParentTask;
 import casestudy.taskmanager.domains.Task;
 import casestudy.taskmanager.exception.DBException;
 import casestudy.taskmanager.exception.TaskValidationException;
+import casestudy.taskmanager.models.AppKeyValue;
 import casestudy.taskmanager.models.TaskModel;
 import casestudy.taskmanager.repositories.ParentTaskRepository;
 import casestudy.taskmanager.repositories.TaskManagerRepository;
 import casestudy.taskmanager.repositories.TaskRepository;
+import casestudy.taskmanager.util.MessageKeyUtil;
 import casestudy.taskmanager.util.SequenceGeneratorUtil;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -34,18 +38,21 @@ public class TaskManagerService {
   private final TaskManagerRepository taskManagerRepository;
   private final SequenceGeneratorUtil sequenceGeneratorUtil;
   private final MongoTemplate mongoTemplate;
+  private final MessageSource messageSource;
 
   public TaskManagerService(
       final TaskRepository taskRepository,
       final ParentTaskRepository parentTaskRepository,
       final TaskManagerRepository taskManagerRepository,
       final SequenceGeneratorUtil sequenceGeneratorUtil,
-      final MongoTemplate mongoTemplate) {
+      final MongoTemplate mongoTemplate,
+      final MessageSource messageSource) {
     this.taskRepository = taskRepository;
     this.parentTaskRepository = parentTaskRepository;
     this.taskManagerRepository = taskManagerRepository;
     this.sequenceGeneratorUtil = sequenceGeneratorUtil;
     this.mongoTemplate = mongoTemplate;
+    this.messageSource = messageSource;
   }
 
   public List<TaskModel> getAllTasks() {
@@ -132,7 +139,7 @@ public class TaskManagerService {
         if (!CollectionUtils.isEmpty(matchingTask)) {
           log.error("Below task already exists\n{}", matchingTask.get(0));
 
-          throw new DBException("Task already exists");
+          throw new DBException(getMessage("exception.taskExist"));
         } else {
           log.debug("Task not present, proceeding to add task");
 
@@ -146,9 +153,10 @@ public class TaskManagerService {
                   null);
 
           if (newTask != null && StringUtils.isNotBlank(newTask.getId())) {
-            result = "Successfully added task to Database!";
+            result = getMessage("success.addTask");
           } else {
-            result = "Failed to add task to Database.";
+            result = getMessage("exception.addTask");
+
             throw new DBException(result);
           }
         }
@@ -169,23 +177,23 @@ public class TaskManagerService {
                   null);
 
           if (newTask != null && StringUtils.isNotBlank(newTask.getId())) {
-            result = "Successfully added task to Database!";
+            result = getMessage("success.addTask");
           } else {
-            result = "Failed to add task to Database.";
+            result = getMessage("exception.addTask");
             throw new DBException(result);
           }
 
         } else {
-          final String errMsg = "Failed to save Parent Task";
+          final String errMsg = getMessage("exception.addParent");
           log.error(errMsg);
 
           throw new DBException(errMsg);
         }
       }
     } else {
-      log.error("Invalid request");
+      log.error(getMessage("error.invalidRequest"));
 
-      throw new TaskValidationException("Invalid request");
+      throw new TaskValidationException(getMessage("error.invalidRequest"));
     }
 
     return result;
@@ -219,7 +227,7 @@ public class TaskManagerService {
           // If the priority of the task is set to -1 then that means it has ended and cannot be
           // updated
           if (task.getPriority() == -1) {
-            String errMsg = "Task has already ended and cannot be updated";
+            String errMsg = getMessage("exception.updateTaskEnded");
             log.error(errMsg);
 
             throw new DBException(errMsg);
@@ -260,7 +268,7 @@ public class TaskManagerService {
 
         } else {
           String errMsg =
-              MessageFormat.format("Could not find task with id: {0}", taskModel.getTaskId());
+              MessageFormat.format(getMessage("exception.taskNotFoundById"), taskModel.getTaskId());
           log.error(errMsg);
 
           throw new DBException(errMsg);
@@ -269,21 +277,21 @@ public class TaskManagerService {
       } else {
         String errMsg =
             MessageFormat.format(
-                "Could not find parent task with id: {0}", taskModel.getParentId());
+                getMessage("exception.parentTaskNotFoundById"), taskModel.getParentId());
         log.error(errMsg);
 
         throw new DBException(errMsg);
       }
     } else {
-      log.error("Invalid request");
+      log.error(getMessage("error.invalidRequest"));
 
-      throw new TaskValidationException("Invalid request");
+      throw new TaskValidationException(getMessage("error.invalidRequest"));
     }
 
     if (recordUpdated) {
-      result = "Successfully updated task!";
+      result = getMessage("success.updateTask");
     } else {
-      result = "Ignored update as records did not change!";
+      result = getMessage("error.ignoreUpdate");
     }
     return result;
   }
@@ -344,7 +352,7 @@ public class TaskManagerService {
     if (taskPostSave != null && StringUtils.isNotBlank(taskPostSave.getId())) {
       log.debug("Successfully {} Task to DB", isExistingRecord ? "updated" : "added");
     } else {
-      final String errMsg = "Failed to save Task";
+      final String errMsg = getMessage("exception.saveTask");
       log.error(errMsg);
 
       throw new DBException(errMsg);
@@ -375,7 +383,7 @@ public class TaskManagerService {
     if (parentTaskPostSave != null && StringUtils.isNotBlank(parentTaskPostSave.getId())) {
       log.debug("Successfully {} ParentTask to DB", isExtingRecord ? "updated" : "added");
     } else {
-      final String errMsg = "Failed to save ParentTask";
+      final String errMsg = getMessage("exception.saveParentTask");
       log.error(errMsg);
 
       throw new DBException(errMsg);
@@ -427,7 +435,7 @@ public class TaskManagerService {
               }
               if (taskModel.getPriorityFrom() > 0 && taskModel.getPriorityTo() > 0) {
                 if (taskModel.getPriorityFrom() > taskModel.getPriorityTo()) {
-                  throw new TaskValidationException("PriorityFrom is greater than PriorityTo");
+                  throw new TaskValidationException(getMessage("exception.priorityValidation"));
                 }
                 matched =
                     task.getPriority() >= taskModel.getPriorityFrom()
@@ -479,10 +487,10 @@ public class TaskManagerService {
         taskModel.setPriority(-1);
         result = updateTask(taskModel);
       } else {
-        result = "No task found";
+        result = getMessage("error.taskNotFound");
       }
     } else {
-      throw new TaskValidationException("Invalid taskId");
+      throw new TaskValidationException(getMessage("error.invalidTaskId"));
     }
 
     return result;
@@ -503,16 +511,37 @@ public class TaskManagerService {
           BeanUtils.copyProperties(matchedTask, result);
           BeanUtils.copyProperties(matchedParentTask, result);
         } else {
-          throw new DBException("Parent Task not found. Invalid record");
+          throw new DBException(getMessage("exception.parentTaskNotFound"));
         }
 
       } else {
-        throw new TaskValidationException("Task not found");
+        throw new TaskValidationException(getMessage("exception.taskNotFound"));
       }
     } else {
-      throw new TaskValidationException("Invalid taskId");
+      throw new TaskValidationException(getMessage("error.invalidTaskId"));
     }
 
     return result;
+  }
+
+  private String getMessage(final String msgKey) {
+    return messageSource.getMessage(msgKey, null, LocaleContextHolder.getLocale());
+  }
+
+  public List<AppKeyValue> getI18nMessages() {
+    List<String> keys = MessageKeyUtil.getAppKeys();
+
+    List<AppKeyValue> appMessageList =
+        keys.stream()
+            .map(
+                key -> {
+                  final String value = getMessage(key);
+                  AppKeyValue keyValuePair = new AppKeyValue(key, value);
+
+                  return keyValuePair;
+                })
+            .collect(Collectors.toList());
+
+    return appMessageList;
   }
 }

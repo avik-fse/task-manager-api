@@ -1,10 +1,11 @@
 package casestudy.taskmanager.controllers;
 
+import casestudy.taskmanager.models.AppKeyValue;
 import casestudy.taskmanager.models.TaskModel;
 import casestudy.taskmanager.service.TaskManagerService;
 import casestudy.taskmanager.util.DateUtil;
 import lombok.extern.log4j.Log4j2;
-import org.apache.logging.log4j.core.util.KeyValuePair;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,17 +76,17 @@ public class TaskManagerController {
   }
 
   @PostMapping("/addTask")
-  public ResponseEntity<KeyValuePair> addTask(@RequestBody final TaskModel taskMode) {
+  public ResponseEntity<AppKeyValue> addTask(@RequestBody final TaskModel taskMode) {
     final String response = taskManagerService.addTask(taskMode);
-    KeyValuePair respBody = new KeyValuePair("message", response);
+    AppKeyValue respBody = new AppKeyValue("message", response);
 
     return new ResponseEntity<>(respBody, OK);
   }
 
   @PutMapping("/updateTask")
-  public ResponseEntity<KeyValuePair> updateTask(@RequestBody final TaskModel taskMode) {
+  public ResponseEntity<AppKeyValue> updateTask(@RequestBody final TaskModel taskMode) {
     final String response = taskManagerService.updateTask(taskMode);
-    KeyValuePair respBody = new KeyValuePair("message", response);
+    AppKeyValue respBody = new AppKeyValue("message", response);
 
     return new ResponseEntity<>(respBody, OK);
   }
@@ -97,10 +98,17 @@ public class TaskManagerController {
   }
 
   @PutMapping("/endTask/{taskId}")
-  public ResponseEntity<KeyValuePair> endTask(@PathVariable("taskId") final String taskId) {
+  public ResponseEntity<AppKeyValue> endTask(@PathVariable("taskId") final String taskId) {
     final String response = taskManagerService.endTask(taskId);
-    KeyValuePair respBody = new KeyValuePair("message", response);
+    AppKeyValue respBody = new AppKeyValue("message", response);
 
     return new ResponseEntity<>(respBody, OK);
+  }
+
+  @GetMapping("/i18nMessages")
+  public List<AppKeyValue> getI18nMessages() {
+    log.debug("Initiating TaskManagerController getI18nMessages method");
+
+    return taskManagerService.getI18nMessages();
   }
 }
