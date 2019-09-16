@@ -137,6 +137,7 @@ public class TaskManagerService {
       // Check if the parentTask is empty then set parentTask as NA
       if (StringUtils.isBlank(taskModel.getParentTask())) {
         taskModel.setParentTask(DEFAULT_PARENT_TASK);
+        taskModel.setIsParentCollection(true);
       }
 
       // Parse the parentTask
@@ -202,7 +203,7 @@ public class TaskManagerService {
         // Find if the input task is already present by matching all fields
         List<Task> matchingTask =
             taskManagerRepository.findByAllTaskFields(
-                parentTask.getParentId(),
+                parentTask.getTaskId(),
                 taskModel.getTask(),
                 taskModel.getStartDate(),
                 taskModel.getEndDate(),
@@ -218,7 +219,7 @@ public class TaskManagerService {
 
           Task newTask =
               saveTask(
-                  parentTask.getParentId(),
+                  parentTask.getTaskId(),
                   taskModel.getTask(),
                   taskModel.getStartDate(),
                   taskModel.getEndDate(),
@@ -287,6 +288,7 @@ public class TaskManagerService {
       // Check if the parentTask is empty then set parentTask as NA
       if (StringUtils.isBlank(taskModel.getParentTask())) {
         taskModel.setParentTask(DEFAULT_PARENT_TASK);
+        taskModel.setIsParentCollection(true);
       }
 
       // Parse the parentTask
@@ -595,9 +597,26 @@ public class TaskManagerService {
     if (NumberUtils.isCreatable(taskId)) {
       List<Task> taskList = taskRepository.findByTaskId(Long.parseLong(taskId));
       if (!CollectionUtils.isEmpty(taskList)) {
-        Task task = taskList.get(0);
-
         TaskModel taskModel = new TaskModel();
+        Task task = taskList.get(0);
+        if (task.getIsParentCollection()) {
+          List<ParentTask> parentTaskLst = parentTaskRepository.findByParentId(task.getParentId());
+          if (!CollectionUtils.isEmpty(parentTaskLst)) {
+            ParentTask parentTask = parentTaskLst.get(0);
+            taskModel.setParentTask(parentTask.getParentTask());
+          } else {
+            throw new DBException(getMessage("exception.parentTaskNotFound"));
+          }
+        } else {
+          List<Task> parentTaskLst = taskRepository.findByTaskId(task.getTaskId());
+          if (!CollectionUtils.isEmpty(parentTaskLst)) {
+            Task parentTask = parentTaskLst.get(0);
+            taskModel.setParentTask(parentTask.getTask());
+          } else {
+            throw new DBException(getMessage("exception.parentTaskNotFound"));
+          }
+        }
+
         BeanUtils.copyProperties(task, taskModel);
         taskModel.setPriority(-1);
         result = updateTask(taskModel);
