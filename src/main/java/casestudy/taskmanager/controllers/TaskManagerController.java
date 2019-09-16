@@ -5,7 +5,6 @@ import casestudy.taskmanager.models.TaskModel;
 import casestudy.taskmanager.service.TaskManagerService;
 import casestudy.taskmanager.util.DateUtil;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +30,13 @@ public class TaskManagerController {
     log.debug("Initiating TaskManagerController getAllTasks method");
 
     return taskManagerService.getAllTasks();
+  }
+
+  @GetMapping("/allParentsAndActiveTasks")
+  public List<TaskModel> getAllParentsAndActiveTasks() {
+    log.debug("Initiating TaskManagerController getAllParentsAndActiveTasks method");
+
+    return taskManagerService.getAllParentsAndActiveTasks();
   }
 
   @GetMapping("/taskByName/{taskName}")
@@ -66,13 +72,6 @@ public class TaskManagerController {
     log.debug("Initiating TaskManagerController getTaskByEndDate method");
 
     return taskManagerService.getTaskByPriority(priority);
-  }
-
-  @GetMapping("/taskByParentTask/{parentTask}")
-  public List<TaskModel> getTaskByParentTask(@PathVariable("parentTask") final String parentTask) {
-    log.debug("Initiating TaskManagerController getTaskByParentTask method");
-
-    return taskManagerService.getTaskByParentTask(parentTask);
   }
 
   @PostMapping("/addTask")

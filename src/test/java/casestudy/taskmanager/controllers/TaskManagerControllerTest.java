@@ -18,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.MessageSource;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,16 +44,12 @@ public class TaskManagerControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
-  private TaskManagerController taskManagerControllerToTest;
-
-  private TaskManagerService taskManagerService;
-
   @Mock private TaskRepository taskRepository;
   @Mock private ParentTaskRepository parentTaskRepository;
   @Mock private TaskManagerRepository taskManagerRepository;
   @Mock private SequenceGeneratorUtil sequenceGeneratorUtil;
   @Mock private MongoTemplate mongoTemplate;
-  @Mock private MessageSource messageSource;
+  @Autowired private MessageSource messageSource;
 
   @Autowired private DateUtil dateUtil;
 
@@ -60,14 +57,16 @@ public class TaskManagerControllerTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
 
-    taskManagerService =
+    TaskManagerService taskManagerService =
         new TaskManagerService(
             taskRepository,
             parentTaskRepository,
             taskManagerRepository,
             sequenceGeneratorUtil,
-            mongoTemplate, messageSource);
-    taskManagerControllerToTest = new TaskManagerController(taskManagerService, dateUtil);
+            mongoTemplate,
+            messageSource);
+    TaskManagerController taskManagerControllerToTest =
+        new TaskManagerController(taskManagerService, dateUtil);
 
     mockMvc = MockMvcBuilders.standaloneSetup(taskManagerControllerToTest).build();
 
@@ -87,12 +86,15 @@ public class TaskManagerControllerTest {
 
     doReturn(dummyTaskList()).when(taskRepository).findByPriority(anyInt());
 
-    doReturn(dummyParentTaskList()).when(taskManagerRepository).findByParentTaskName(anyString());
-
     doReturn(dummyTaskList())
         .when(taskManagerRepository)
         .findByAllTaskFields(
-            anyLong(), anyString(), any(LocalDate.class), any(LocalDate.class), anyInt());
+            anyLong(),
+            anyString(),
+            any(LocalDate.class),
+            any(LocalDate.class),
+            anyInt(),
+            anyBoolean());
 
     doReturn(1l)
         .when(sequenceGeneratorUtil)
@@ -111,6 +113,17 @@ public class TaskManagerControllerTest {
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$[0].taskId").exists());
+  }
+
+  @Test
+  public void getAllParents() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.get(baseUrl + "/allParentsAndActiveTasks")
+                .accept(MediaType.APPLICATION_JSON))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(MockMvcResultMatchers.jsonPath("$[0].parentId").exists());
   }
 
   @Test
@@ -168,28 +181,19 @@ public class TaskManagerControllerTest {
   }
 
   @Test
-  public void getTaskByParentTask() throws Exception {
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.get(baseUrl + "/taskByParentTask/Test Parent Task")
-                .accept(MediaType.APPLICATION_JSON))
-        .andDo(print())
-        .andExpect(status().isOk())
-        .andExpect(MockMvcResultMatchers.jsonPath("$[0].parentId").value("1"));
-  }
-
-  @Test
   public void addTask() throws Exception {
     String jsonStr =
         "{\n"
             + "\t\"task\" :\"test task\",\n"
             + "\t\"priority\" : \"1\",\n"
-            + "\t\"startDate\":\"12-12-2019\"\n"
+            + "\t\"startDate\":\"12-12-2019\",\n"
+            + "\t\"isParentCollection\":true\n"
             + "}";
     mockMvc
         .perform(
             MockMvcRequestBuilders.post(baseUrl + "/addTask")
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .headers(getHttpHeaders("en"))
                 .content(jsonStr))
         .andDo(print())
         .andExpect(status().isOk())
@@ -233,6 +237,7 @@ public class TaskManagerControllerTest {
         .perform(
             MockMvcRequestBuilders.post(baseUrl + "/search")
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .headers(getHttpHeaders("en"))
                 .content(jsonStr))
         .andDo(print())
         .andExpect(status().isOk())
@@ -249,9 +254,21 @@ public class TaskManagerControllerTest {
         .andExpect(MockMvcResultMatchers.jsonPath("$.value").value("Successfully updated task!"));
   }
 
+  @Test
+  public void getI18nMessages() throws Exception {
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.get(baseUrl + "/i18nMessages").headers(getHttpHeaders("en")))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(MockMvcResultMatchers.jsonPath("$[0].key").exists());
+  }
+
   private Task dummyTask() {
-    Task task = new Task(1l, 1l, "Test Task", LocalDate.now(), LocalDate.now(), 15);
+    Task task = new Task(1l, 1l, "Test Task", LocalDate.now(), LocalDate.now(), 15, false);
     task.setId("abc");
+    task.setIsParentCollection(true);
 
     return task;
   }
@@ -269,5 +286,13 @@ public class TaskManagerControllerTest {
 
   private List<ParentTask> dummyParentTaskList() {
     return Arrays.asList(dummyParentTask());
+  }
+
+  private HttpHeaders getHttpHeaders(String lang) {
+    HttpHeaders httpHeaders = new HttpHeaders();
+    httpHeaders.add("Accept-Language", lang);
+    httpHeaders.add("Content-Type", "application/json");
+
+    return httpHeaders;
   }
 }

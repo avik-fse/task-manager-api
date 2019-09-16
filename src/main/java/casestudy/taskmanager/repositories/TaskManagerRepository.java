@@ -13,14 +13,14 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public interface TaskManagerRepository {
-  List<TaskModel> findByParentTaskName(final String parentTaskName);
 
   List<Task> findByAllTaskFields(
       final Long parentId,
       final String task,
       final LocalDate startDate,
       final LocalDate endDate,
-      final Integer priority);
+      final Integer priority,
+      final Boolean isParentCollection);
 
   default List<TaskModel> getTaskModelList(
       final List<ParentTask> parentTaskList, final List<Task> taskList) {
@@ -34,16 +34,37 @@ public interface TaskManagerRepository {
                     TaskModel taskModel = new TaskModel();
                     BeanUtils.copyProperties(task, taskModel);
 
-                    // Set the Parent Task
-                    Optional<ParentTask> parentTask =
-                        parentTaskList.stream()
-                            .filter(
-                                parTask ->
-                                    parTask.getParentId().longValue()
-                                        == task.getParentId().longValue())
-                            .findFirst();
+                    // Find parent in parent
+                    if (task.getIsParentCollection()) {
 
-                    parentTask.ifPresent(value -> taskModel.setParentTask(value.getParentTask()));
+                      // Set the Parent Task if parent is in parent table
+                      Optional<ParentTask> parentTask =
+                          parentTaskList.stream()
+                              .filter(
+                                  parTask ->
+                                      parTask.getParentId().longValue()
+                                              == task.getParentId().longValue()
+                                          && task.getIsParentCollection())
+                              .findFirst();
+
+                      parentTask.ifPresent(value -> taskModel.setParentTask(value.getParentTask()));
+                    }
+
+                    // Find parent in task
+                    if (!task.getIsParentCollection()) {
+
+                      // Set the Parent Task if parent is in task table
+                      Optional<Task> parentTaskInTask =
+                          taskList.stream()
+                              .filter(
+                                  parTask ->
+                                      parTask.getTaskId().longValue()
+                                              == task.getParentId().longValue()
+                                          && !task.getIsParentCollection())
+                              .findFirst();
+
+                      parentTaskInTask.ifPresent(value -> taskModel.setParentTask(value.getTask()));
+                    }
 
                     return taskModel;
                   })

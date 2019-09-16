@@ -35,18 +35,23 @@ public class Task {
   @Field("priority")
   private Integer priority;
 
+  @Field("isParentCollection")
+  private Boolean isParentCollection;
+
   public Task(
       final Long taskId,
       final Long parentId,
       final String task,
       final LocalDate startDate,
       final LocalDate endDate,
-      final Integer priority) {
+      final Integer priority,
+      final Boolean isParentCollection) {
     this.taskId = taskId;
     this.parentId = parentId;
     this.task = task;
     this.startDate = startDate;
     this.endDate = endDate;
     this.priority = priority;
+    this.isParentCollection = isParentCollection;
   }
 }

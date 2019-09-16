@@ -43,4 +43,3 @@ public class MessageKeyUtil {
         "label.title");
   }
 }
-

@@ -64,6 +64,32 @@ public class TaskManagerService {
     return taskManagerRepository.getTaskModelList(allParentTasks, allTasks);
   }
 
+  public List<TaskModel> getAllParentsAndActiveTasks() {
+    log.debug("Processing TaskManagerService getAllParentsAndActiveTasks");
+
+    List<ParentTask> allParentTasks = parentTaskRepository.findAll();
+
+    List<TaskModel> allParentTaskList =
+        allParentTasks
+            .parallelStream()
+            .map(
+                parTsk -> {
+                  TaskModel taskModel = new TaskModel();
+                  BeanUtils.copyProperties(parTsk, taskModel);
+                  taskModel.setIsParentCollection(true);
+
+                  return taskModel;
+                })
+            .collect(Collectors.toList());
+
+    List<TaskModel> allTaskList = getAllTasks();
+
+    allParentTaskList.addAll(
+        allTaskList.stream().filter(task -> task.getPriority() >= 0).collect(Collectors.toList()));
+
+    return allParentTaskList;
+  }
+
   public List<TaskModel> getTaskByName(final String taskName) {
     log.debug("Processing TaskManagerService getTaskByName");
 
@@ -100,12 +126,6 @@ public class TaskManagerService {
     return taskManagerRepository.getTaskModelList(allParentTasks, taskList);
   }
 
-  public List<TaskModel> getTaskByParentTask(String parentTask) {
-    log.debug("Processing TaskManagerService getTaskByParentTask({})", parentTask);
-
-    return taskManagerRepository.findByParentTaskName(parentTask);
-  }
-
   public String addTask(final TaskModel taskModel) {
     String result;
 
@@ -119,8 +139,19 @@ public class TaskManagerService {
         taskModel.setParentTask(DEFAULT_PARENT_TASK);
       }
 
-      List<ParentTask> parentTaskLst =
-          parentTaskRepository.findByParentTask(taskModel.getParentTask());
+      // Parse the parentTask
+      boolean existingParentTask =
+          taskModel.getIsParentCollection() == null ? false : taskModel.getIsParentCollection();
+      Long existingParentTaskId = taskModel.getParentId() == null ? 0 : taskModel.getParentId();
+      List<ParentTask> parentTaskLst = null;
+      List<Task> taskList = null;
+      if (existingParentTask && existingParentTaskId > 0) {
+        parentTaskLst = parentTaskRepository.findByParentId(existingParentTaskId);
+      } else if (!existingParentTask && existingParentTaskId > 0) {
+        taskList = taskRepository.findByTaskId(existingParentTaskId);
+      } else {
+        parentTaskLst = parentTaskRepository.findByParentTask(taskModel.getParentTask());
+      }
 
       if (!CollectionUtils.isEmpty(parentTaskLst)) {
         ParentTask parentTask = parentTaskLst.get(0);
@@ -134,7 +165,8 @@ public class TaskManagerService {
                 taskModel.getTask(),
                 taskModel.getStartDate(),
                 taskModel.getEndDate(),
-                taskModel.getPriority());
+                taskModel.getPriority(),
+                taskModel.getIsParentCollection());
 
         if (!CollectionUtils.isEmpty(matchingTask)) {
           log.error("Below task already exists\n{}", matchingTask.get(0));
@@ -150,6 +182,48 @@ public class TaskManagerService {
                   taskModel.getStartDate(),
                   taskModel.getEndDate(),
                   taskModel.getPriority(),
+                  taskModel.getIsParentCollection(),
+                  null);
+
+          if (newTask != null && StringUtils.isNotBlank(newTask.getId())) {
+            result = getMessage("success.addTask");
+          } else {
+            result = getMessage("exception.addTask");
+
+            throw new DBException(result);
+          }
+        }
+      } else if (!CollectionUtils.isEmpty(taskList)) {
+        // Task as parent flow
+        Task parentTask = taskList.get(0);
+
+        log.debug("Found below matching task\n{}", parentTask);
+
+        // Find if the input task is already present by matching all fields
+        List<Task> matchingTask =
+            taskManagerRepository.findByAllTaskFields(
+                parentTask.getParentId(),
+                taskModel.getTask(),
+                taskModel.getStartDate(),
+                taskModel.getEndDate(),
+                taskModel.getPriority(),
+                taskModel.getIsParentCollection());
+
+        if (!CollectionUtils.isEmpty(matchingTask)) {
+          log.error("Below task already exists\n{}", matchingTask.get(0));
+
+          throw new DBException(getMessage("exception.taskExist"));
+        } else {
+          log.debug("Task not present, proceeding to add task");
+
+          Task newTask =
+              saveTask(
+                  parentTask.getParentId(),
+                  taskModel.getTask(),
+                  taskModel.getStartDate(),
+                  taskModel.getEndDate(),
+                  taskModel.getPriority(),
+                  taskModel.getIsParentCollection(),
                   null);
 
           if (newTask != null && StringUtils.isNotBlank(newTask.getId())) {
@@ -167,6 +241,7 @@ public class TaskManagerService {
 
         if (parentTaskPostSave != null && StringUtils.isNotBlank(parentTaskPostSave.getId())) {
           // Prepare the new ParentTask object to be inserted in DB
+          taskModel.setIsParentCollection(true);
           Task newTask =
               saveTask(
                   parentTaskPostSave.getParentId(),
@@ -174,6 +249,7 @@ public class TaskManagerService {
                   taskModel.getStartDate(),
                   taskModel.getEndDate(),
                   taskModel.getPriority(),
+                  taskModel.getIsParentCollection(),
                   null);
 
           if (newTask != null && StringUtils.isNotBlank(newTask.getId())) {
@@ -213,10 +289,21 @@ public class TaskManagerService {
         taskModel.setParentTask(DEFAULT_PARENT_TASK);
       }
 
-      // Retrieve the parentTask from DB
-      List<ParentTask> parentTaskLst = parentTaskRepository.findByParentId(taskModel.getParentId());
+      // Parse the parentTask
+      boolean hasParentInParent =
+          taskModel.getIsParentCollection() == null ? false : taskModel.getIsParentCollection();
+      Long existingParentTaskId = taskModel.getParentId() == null ? 0 : taskModel.getParentId();
+      List<ParentTask> parentTaskLst = null;
+      List<Task> taskAsParentList = null;
+      if (hasParentInParent && existingParentTaskId > 0) {
+        parentTaskLst = parentTaskRepository.findByParentId(existingParentTaskId);
+      } else if (!hasParentInParent && existingParentTaskId > 0) {
+        taskAsParentList = taskRepository.findByTaskId(existingParentTaskId);
+      } else {
+        parentTaskLst = parentTaskRepository.findByParentTask(taskModel.getParentTask());
+      }
 
-      if (!CollectionUtils.isEmpty(parentTaskLst)) {
+      if (!CollectionUtils.isEmpty(parentTaskLst) || !CollectionUtils.isEmpty(taskAsParentList)) {
         // Retrieve the Task from DB
         List<Task> taskList = taskRepository.findByTaskId(taskModel.getTaskId());
 
@@ -233,13 +320,35 @@ public class TaskManagerService {
             throw new DBException(errMsg);
           } else {
             // Proceed with update
-            ParentTask parentTask = parentTaskLst.get(0);
-            // Update Parent Task only if the input is different
-            if (!StringUtils.equals(taskModel.getParentTask(), parentTask.getParentTask())) {
-              saveParentTask(taskModel.getParentTask(), parentTask);
-              recordUpdated = true;
+            if (hasParentInParent) {
+
+              ParentTask parentTask = parentTaskLst.get(0);
+              // Update Parent Task only if the text hsa changed for the same parent id is different
+              if (!StringUtils.equals(taskModel.getParentTask(), parentTask.getParentTask())
+                  && taskModel.getParentId().longValue() == parentTask.getParentId().longValue()) {
+                saveParentTask(taskModel.getParentTask(), parentTask);
+                recordUpdated = true;
+              } else {
+                log.debug("Ignoring Update of Parent Task as the fields are identical");
+              }
             } else {
-              log.debug("Ignoring Update of Parent Task as the fields are identical");
+              Task parentTask = taskAsParentList.get(0);
+              // Update Parent Task only if the text hsa changed for the same parent id is different
+              if (!StringUtils.equals(taskModel.getParentTask(), parentTask.getTask())
+                  && taskModel.getParentId().longValue() == parentTask.getParentId().longValue()) {
+                // Update the task name and id representing the parent task
+                saveTask(
+                    parentTask.getParentId(),
+                    taskModel.getParentTask(),
+                    parentTask.getStartDate(),
+                    parentTask.getEndDate(),
+                    parentTask.getPriority(),
+                    parentTask.getIsParentCollection(),
+                    parentTask);
+                recordUpdated = true;
+              } else {
+                log.debug("Ignoring Update of Parent Task as the fields are identical");
+              }
             }
 
             // Update Task only if the input is different
@@ -250,13 +359,15 @@ public class TaskManagerService {
                     && task.getEndDate() != null
                     && !taskModel.getEndDate().isEqual(task.getEndDate()))
                 || (taskModel.getEndDate() != null && task.getEndDate() == null)
-                || taskModel.getPriority() != task.getPriority()) {
+                || taskModel.getPriority() != task.getPriority()
+                || taskModel.getIsParentCollection() != task.getIsParentCollection()) {
               saveTask(
-                  parentTask.getParentId(),
+                  taskModel.getParentId(),
                   taskModel.getTask(),
                   taskModel.getStartDate(),
                   taskModel.getEndDate(),
                   taskModel.getPriority(),
+                  taskModel.getIsParentCollection(),
                   task);
 
               recordUpdated = true;
@@ -324,6 +435,7 @@ public class TaskManagerService {
       final LocalDate startDate,
       final LocalDate endDate,
       final Integer priority,
+      final Boolean isParentCollection,
       Task taskObj) {
 
     final boolean isExistingRecord = (taskObj != null);
@@ -334,6 +446,8 @@ public class TaskManagerService {
       taskObj.setStartDate(startDate);
       taskObj.setEndDate(endDate);
       taskObj.setPriority(priority);
+      taskObj.setParentId(parentId);
+      taskObj.setIsParentCollection(isParentCollection);
     } else {
       taskObj =
           new Task(
@@ -342,7 +456,8 @@ public class TaskManagerService {
               task,
               startDate,
               endDate,
-              priority);
+              priority,
+              isParentCollection);
     }
 
     log.debug(
@@ -503,13 +618,24 @@ public class TaskManagerService {
 
       if (!CollectionUtils.isEmpty(taskList)) {
         Task matchedTask = taskList.get(0);
-        List<ParentTask> parentTaskList =
-            parentTaskRepository.findByParentId(matchedTask.getParentId());
+        final boolean isParentCollection = matchedTask.getIsParentCollection();
+        List<ParentTask> parentTaskList = null;
+        List<Task> taskParentLst = null;
 
-        if (!CollectionUtils.isEmpty(parentTaskList)) {
+        if (isParentCollection) {
+          parentTaskList = parentTaskRepository.findByParentId(matchedTask.getParentId());
+        } else {
+          taskParentLst = taskRepository.findByTaskId(matchedTask.getParentId());
+        }
+
+        if (!CollectionUtils.isEmpty(parentTaskList) && isParentCollection) {
           ParentTask matchedParentTask = parentTaskList.get(0);
           BeanUtils.copyProperties(matchedTask, result);
           BeanUtils.copyProperties(matchedParentTask, result);
+        } else if (!CollectionUtils.isEmpty(taskParentLst) && !isParentCollection) {
+          Task matchedParentTask = taskParentLst.get(0);
+          BeanUtils.copyProperties(matchedTask, result);
+          result.setParentTask(matchedParentTask.getTask());
         } else {
           throw new DBException(getMessage("exception.parentTaskNotFound"));
         }

@@ -25,4 +25,6 @@ public class TaskModel {
 
   private Integer priorityFrom;
   private Integer priorityTo;
+
+  private Boolean isParentCollection;
 }
