@@ -12,8 +12,17 @@
    a. To build the package and run the test cases use the command:  
     `mvn clean package`
    
-   b. To run the API service use the command:  
+### Steps to run locally as Spring Boot standalone(embeded tomcat) application:
+   
+   a. To run the API service use the command(from the root application folder in command prompt):  
     `mvn spring-boot:run`
+
+### Steps to run the api in external server(tomcat):
+   
+   a. From the root application folder in command prompt, execute the below command to create the war file:  
+    `mvn clean package`
+    
+   b. copy the **task-manager-api.war** file from the `target` directory and deply it in server
 
 _Note: If you are using any IDE to open the source code and compile, then you might need to add lombok suppport to your IDE
 and also enable annotation processing in the IDE._
