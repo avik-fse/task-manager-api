@@ -30,6 +30,7 @@ public class MessageKeyUtil {
         "label.endDate",
         "label.addTask",
         "label.reset",
+        "label.cancel",
         "label.priorityFrom",
         "label.priorityTo",
         "label.start",
